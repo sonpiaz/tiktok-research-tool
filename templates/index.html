@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Research Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding-top: 20px;
+        }
+        .nav-tabs {
+            margin-bottom: 20px;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0d6efd;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 2s linear infinite;
+            display: none;
+            margin: 10px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .hidden {
+            display: none;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        #results-container {
+            margin-top: 20px;
+        }
+        .card {
+            margin-bottom: 15px;
+        }
+        .file-card {
+            cursor: pointer;
+        }
+        .file-card:hover {
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">TikTok Research Tool</h1>
+        
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="collection-tab" data-bs-toggle="tab" data-bs-target="#collection" type="button" role="tab" aria-controls="collection" aria-selected="true">Data Collection</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="files-tab" data-bs-toggle="tab" data-bs-target="#files" type="button" role="tab" aria-controls="files" aria-selected="false">Saved Files</button>
+            </li>
+        </ul>
+        
+        <div class="tab-content">
+            <!-- Data Collection Tab -->
+            <div class="tab-pane fade show active" id="collection" role="tabpanel" aria-labelledby="collection-tab">
+                <div class="row">
+                    <!-- Control Panel -->
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Control Panel</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="scrape-form">
+                                    <div class="form-group">
+                                        <label for="username">TikTok Username:</label>
+                                        <input type="text" class="form-control" id="username" placeholder="e.g. username">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="hashtag">Hashtag:</label>
+                                        <input type="text" class="form-control" id="hashtag" placeholder="e.g. trending">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="duration">Run Time (seconds):</label>
+                                        <input type="number" class="form-control" id="duration" value="60" min="10" max="300">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="maxVideos">Max Videos:</label>
+                                        <input type="number" class="form-control" id="maxVideos" value="10" min="1" max="100">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="scrollSpeed">Scroll Speed:</label>
+                                        <select class="form-select" id="scrollSpeed">
+                                            <option value="slow">Slow</option>
+                                            <option value="medium" selected>Medium</option>
+                                            <option value="fast">Fast</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-check mb-3">
+                                        <input type="checkbox" class="form-check-input" id="saveToFile">
+                                        <label class="form-check-label" for="saveToFile">Save results to file</label>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary w-100">Start Data Collection</button>
+                                </form>
+                                <div class="loader mt-3" id="loader"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Results Panel -->
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5>Results</h5>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Export
+                                    </button>
+                                    <ul class="dropdown-menu" aria-labelledby="exportDropdown">
+                                        <li><a class="dropdown-item" href="#" id="export-json">Export as JSON</a></li>
+                                        <li><a class="dropdown-item" href="#" id="export-csv">Export as CSV</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="results-container">
+                                    <p class="text-center text-muted">No data collected yet. Configure parameters and click "Start Data Collection"</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Saved Files Tab -->
+            <div class="tab-pane fade" id="files" role="tabpanel" aria-labelledby="files-tab">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Saved Files</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="files-container">
+                            <p class="text-center text-muted">Loading saved files...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Các biến toàn cục
+        let currentResults = [];
+        let savedFiles = [];
+        
+        // Các hàm trợ giúp
+        function showLoader() {
+            document.getElementById('loader').style.display = 'block';
+        }
+        
+        function hideLoader() {
+            document.getElementById('loader').style.display = 'none';
+        }
+        
+        function displayResults(results) {
+            const container = document.getElementById('results-container');
+            
+            if (results.length === 0) {
+                container.innerHTML = '<p class="text-center text-muted">No results found.</p>';
+                return;
+            }
+            
+            // Hiển thị dữ liệu
+            let html = '<div class="table-responsive"><table class="table table-striped">';
+            html += '<thead><tr><th>Video ID</th><th>Author</th><th>Description</th><th>Likes</th><th>Comments</th><th>Shares</th></tr></thead>';
+            html += '<tbody>';
+            
+            results.forEach(video => {
+                html += `<tr>
+                    <td>${video.id}</td>
+                    <td>${video.author}</td>
+                    <td>${video.desc}</td>
+                    <td>${video.likes}</td>
+                    <td>${video.comments}</td>
+                    <td>${video.shares}</td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table></div>';
+            
+            container.innerHTML = html;
+        }
+        
+        function loadSavedFiles() {
+            const container = document.getElementById('files-container');
+            
+            fetch('/api/files')
+                .then(response => response.json())
+                .then(data => {
+                    savedFiles = data.files || [];
+                    
+                    if (savedFiles.length === 0) {
+                        container.innerHTML = '<p class="text-center text-muted">No saved files found. Collect data and save to file first.</p>';
+                        return;
+                    }
+                    
+                    let html = '<div class="row">';
+                    
+                    savedFiles.forEach(file => {
+                        const date = new Date(file.date).toLocaleString();
+                        const size = (file.size / 1024).toFixed(2) + ' KB';
+                        
+                        html += `
+                            <div class="col-md-6 mb-3">
+                                <div class="card file-card" data-filename="${file.name}">
+                                    <div class="card-body">
+                                        <h5 class="card-title">${file.name}</h5>
+                                        <p class="card-text">
+                                            <small class="text-muted">Date: ${date}</small><br>
+                                            <small class="text-muted">Size: ${size}</small>
+                                        </p>
+                                        <div class="btn-group w-100" role="group">
+                                            <button type="button" class="btn btn-sm btn-outline-primary view-file" data-filename="${file.name}">View</button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger delete-file" data-filename="${file.name}">Delete</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    container.innerHTML = html;
+                    
+                    // Gắn sự kiện cho các nút
+                    document.querySelectorAll('.view-file').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const filename = this.getAttribute('data-filename');
+                            viewFile(filename);
+                        });
+                    });
+                    
+                    document.querySelectorAll('.delete-file').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const filename = this.getAttribute('data-filename');
+                            // Hàm xóa file sẽ được cài đặt sau
+                            alert('Delete functionality will be implemented in a future update');
+                        });
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading files:', error);
+                    container.innerHTML = '<p class="text-center text-danger">Error loading saved files. Please try again.</p>';
+                });
+        }
+        
+        function viewFile(filename) {
+            fetch(`/api/file/${filename}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        currentResults = data.data;
+                        
+                        // Chuyển sang tab Data Collection để hiển thị kết quả
+                        const collectionTab = document.getElementById('collection-tab');
+                        const tab = new bootstrap.Tab(collectionTab);
+                        tab.show();
+                        
+                        // Hiển thị dữ liệu
+                        displayResults(currentResults);
+                    } else {
+                        alert('Error loading file: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error viewing file:', error);
+                    alert('Error viewing file. Please try again.');
+                });
+        }
+        
+        // Khởi tạo sự kiện
+        document.addEventListener('DOMContentLoaded', function() {
+            // Form xử lý
+            const scrapeForm = document.getElementById('scrape-form');
+            
+            scrapeForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const username = document.getElementById('username').value;
+                const hashtag = document.getElementById('hashtag').value;
+                
+                if (!username && !hashtag) {
+                    alert('Please enter either a username or a hashtag.');
+                    return;
+                }
+                
+                const data = {
+                    username: username,
+                    hashtag: hashtag,
+                    duration: parseInt(document.getElementById('duration').value),
+                    maxVideos: parseInt(document.getElementById('maxVideos').value),
+                    scrollSpeed: document.getElementById('scrollSpeed').value,
+                    saveToFile: document.getElementById('saveToFile').checked
+                };
+                
+                showLoader();
+                
+                fetch('/api/scrape', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    hideLoader();
+                    
+                    if (data.success) {
+                        currentResults = data.results;
+                        displayResults(currentResults);
+                        
+                        if (data.saved_file) {
+                            alert(`Data saved to file: ${data.saved_file}`);
+                        }
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    hideLoader();
+                    console.error('Error:', error);
+                    alert('An error occurred while collecting data. Please try again.');
+                });
+            });
+            
+            // Xử lý chuyển tab
+            document.getElementById('files-tab').addEventListener('click', function() {
+                loadSavedFiles();
+            });
+            
+            // Xuất dữ liệu
+            document.getElementById('export-json').addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                if (currentResults.length === 0) {
+                    alert('No data to export. Please collect data first.');
+                    return;
+                }
+                
+                const jsonStr = JSON.stringify(currentResults, null, 2);
+                const blob = new Blob([jsonStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `tiktok_data_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+            
+            document.getElementById('export-csv').addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                if (currentResults.length === 0) {
+                    alert('No data to export. Please collect data first.');
+                    return;
+                }
+                
+                // Tạo CSV từ dữ liệu
+                const headers = ['id', 'author', 'desc', 'likes', 'comments', 'shares', 'collected_at'];
+                let csv = headers.join(',') + '\n';
+                
+                currentResults.forEach(video => {
+                    const row = [
+                        `"${video.id}"`,
+                        `"${video.author}"`,
+                        `"${video.desc.replace(/"/g, '""')}"`,
+                        video.likes,
+                        video.comments,
+                        video.shares,
+                        `"${video.collected_at}"`
+                    ];
+                    csv += row.join(',') + '\n';
+                });
+                
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `tiktok_data_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        });
+    </script>
+</body>
+</html>
