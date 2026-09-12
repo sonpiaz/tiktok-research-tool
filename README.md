@@ -37,7 +37,7 @@ Công cụ nghiên cứu TikTok là một ứng dụng web giúp thu thập và 
 
 1. Clone repository này:
    ```bash
-   git clone https://github.com/yourusername/tiktok-research-tool.git
+   git clone https://github.com/sonpiaz/tiktok-research-tool.git
    cd tiktok-research-tool
    ```
 
